@@ -58,6 +58,14 @@ curl -X POST http://localhost:8080/webhooks/line -H "x-line-signature: $SIG" -H 
 本番の LINE チャネルにつなぐときは `.env`（本番は Secret Manager）に `LINE_CHANNEL_SECRET` と `LINE_CHANNEL_ACCESS_TOKEN` を入れ、
 LINE Developers の Webhook URL に `https://<ドメイン>/webhooks/line` を登録する。詳しくは [contracts/line.md](./contracts/line.md)。
 
+## 閲覧用デモ（1ファイル）を作り直す
+
+サーバーを動かしたまま、全画面を巡回して静的 HTML に書き出す。フォームは保存されない閲覧専用版。
+
+```bash
+node scripts/build-demo.mjs http://localhost:8080 dist/demo.html
+```
+
 ## 検証
 
 ```bash
