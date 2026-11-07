@@ -18,11 +18,14 @@ RESET_DATA=1 DEV_USER_EMAIL=ichitsuya@example.com npm run dev
 
 | 案件 | 色 | なぜ |
 |---|---|---|
-| UG 新宿B店 内装 | 赤 | 顧客が2通連続で未返信、次アクション期限超過、開業日10日前で実施設計・発注未完了、ANDPAD 未紐づけ |
+| UG 新宿B店 内装 | 赤 | 顧客が2通連続で未返信、次アクション期限超過、開業日10日前で実施設計・発注未完了、ANDPAD 未紐づけ。空き確認が回答待ち（Y4） |
+| UG 恵比寿E店 内装 | 赤 | 保証期間中のアフター依頼が受付から3営業日以上、初回対応なし（R5） |
 | UG 池袋C店 現調 | 黄 | 送信者が社員マスタにないユーザー（Y7） |
-| サロンX 自由が丘 | 黄 | 見積提出後フォローなし、次アクション期限が2営業日以内 |
-| UG 渋谷A店 内装 | 青 | 顧客からの受信に営業時間内で返信待ち（4時間を超えると黄） |
-| 未割当スレッド | — | `19:ug-yokohama-d@thread.v2` からの受信。案件に割り当てる |
+| サロンX 自由が丘 | 黄 | 見積提出後フォローなし、次アクション期限が2営業日以内。LINE のやり取り（あいさつ・画像）が見られる |
+| UG 渋谷A店 内装 | 青 | 顧客からの受信に営業時間内で返信待ち（4時間を超えると黄）。開業日から逆算したマイルストーン案が出る |
+| 未割当スレッド | — | Teams `19:ug-yokohama-d@thread.v2` と、LINE の新しい友だち「山本」。案件に割り当てるか、新しい案件として登録する |
+
+ほかに「負荷」（デザイナー別の進行中案件）と「アフター」（受付→初回対応の日数）のページがある。
 
 ## 受信をシミュレートする
 
@@ -42,6 +45,18 @@ curl -X POST http://localhost:8080/webhooks/teams -H 'content-type: application/
 ```
 
 （モックでは `messages('1001')` が fixtures にあるときだけ本文が取れる。）
+
+LINE は「連携状態」ページの開発フォームから、署名付きの Webhook を自分自身に送れる（友だち追加・テキスト・画像・ブロック）。
+開発時のチャネルシークレットは `dev-line-secret`。手で送る場合:
+
+```bash
+BODY='{"destination":"U0","events":[{"type":"message","mode":"active","timestamp":1762480000000,"source":{"type":"user","userId":"Utest1"},"webhookEventId":"01TEST","deliveryContext":{"isRedelivery":false},"message":{"id":"9001","type":"text","text":"こんにちは"}}]}'
+SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac dev-line-secret -binary | base64)
+curl -X POST http://localhost:8080/webhooks/line -H "x-line-signature: $SIG" -H 'content-type: application/json' -d "$BODY"
+```
+
+本番の LINE チャネルにつなぐときは `.env`（本番は Secret Manager）に `LINE_CHANNEL_SECRET` と `LINE_CHANNEL_ACCESS_TOKEN` を入れ、
+LINE Developers の Webhook URL に `https://<ドメイン>/webhooks/line` を登録する。詳しくは [contracts/line.md](./contracts/line.md)。
 
 ## 検証
 

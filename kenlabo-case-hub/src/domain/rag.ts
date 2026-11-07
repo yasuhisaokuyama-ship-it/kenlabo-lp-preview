@@ -29,6 +29,8 @@ export interface RagInput {
   openItems: OpenItem[];
   availabilityRequests: AvailabilityRequest[];
   aftercareTickets: AftercareTicket[];
+  /** 現在の段階の過去の滞留時間の中央値（営業時間）。サンプルが5件以上あるときだけ渡す */
+  stageStayMedianHours?: number;
 }
 
 export interface RagResult {
@@ -160,16 +162,19 @@ export function evaluateCase(input: RagInput, s: Settings, now: Date): RagResult
     }
   }
 
-  // Y5: 段階の滞留
+  // Y5: 段階の滞留（過去中央値があればそれ、なければ SLA の1.5倍）
   const stageKey = currentStageKey(c);
   const slaDays = s.stage_sla_days[stageKey];
-  if (slaDays !== undefined) {
+  const median = input.stageStayMedianHours;
+  if (median !== undefined || slaDays !== undefined) {
     const stayedHours = businessHoursBetween(new Date(c.stage_entered_at), now, s);
-    const limit = slaDays * hpd * s.thresholds.stage_sla_multiplier;
+    const base = median !== undefined ? median : slaDays! * hpd;
+    const limit = base * s.thresholds.stage_sla_multiplier;
     if (stayedHours > limit) {
+      const basis = median !== undefined ? `過去中央値 ${(median / hpd).toFixed(1)}日` : `SLA ${slaDays}日`;
       yellow.push({
         code: 'Y5',
-        message: `${stageLabel(stageKey)} に営業${(stayedHours / hpd).toFixed(1)}日滞留（SLA ${slaDays}日の1.5倍超）`,
+        message: `${stageLabel(stageKey)} に営業${(stayedHours / hpd).toFixed(1)}日滞留（${basis}の${s.thresholds.stage_sla_multiplier}倍超）`,
       });
     }
   }

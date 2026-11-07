@@ -3,7 +3,7 @@
 ## まず読む
 1. `SPEC.md`（受け入れ基準 AC-*、要確認-1〜3）
 2. `plan.md`（スタックとフェーズ）→ `contracts/teams.md` → `docs/adr/`
-3. 変更前に `npm run preflight`（typecheck + 39 tests）が通ることを確認する
+3. 変更前に `npm run preflight`（typecheck + 78 tests）が通ることを確認する
 
 ## 絶対に守ること
 - **時刻は `Clock` 経由**。`new Date()` を直接書かない（テストが固定時計で動く）。営業時間は JST（UTC+9、DST なし）。
@@ -12,7 +12,10 @@
 - **判定ルールは `src/domain/rag.ts` だけ**に置く。画面や通知側で色を決めない。
 - **通知は `sendOnce()` を通す**（重複排除・再試行・dead-letter）。
 - **権限はサーバー側**（`requireEdit` / `requireAdmin`）。画面の出し分けだけで済ませない。
-- Webhook は **3 秒以内に 202**。重い処理はキューへ。
+- Webhook は **すぐ返す**（Teams 202 / LINE 200）。重い処理はキューへ。
+- LINE の署名は **生ボディ** で検証する。JSON.parse したものを文字列に戻して検証しない。
+- LINE の返信は push（通数を消費）。成功したときだけ outbound を記録する。あいさつは reply（無料）。
+- 受信した添付は `BlobStore` へ。画像以外は画面で開かせない（ダウンロードのみ）。
 - 秘密情報をコード・fixtures・ログに書かない。`.env` は commit しない。
 
 ## やらないこと
@@ -25,7 +28,7 @@
 ```
 src/domain   純粋関数（型・時刻・段階・判定・分類）  依存: なし
 src/services 取り込み・判定と通知                    依存: domain, store, adapters(型)
-src/adapters TeamsPort / NotifierPort                依存: domain
+src/adapters TeamsPort / LinePort / NotifierPort / BlobStore  依存: domain
 src/store    MemoryStore・seed                       依存: domain
 src/web      Hono・認証・画面                        依存: 上すべて
 tests        Vitest（固定時計、メモリストア）
@@ -46,5 +49,6 @@ RESET_DATA=1 npm run dev   # デモデータ作り直し
 
 ## 困ったら
 - 判定が期待と違う: `evaluateCase()` に `RagInput` を渡して理由コードを見る（`tests/rag.test.ts` が例）
+- LINE の受信を試す: `tests/helpers.ts` の `postLine()` が署名付きで送る。画面からは「連携状態」の開発フォーム
 - 営業時間がおかしい: `businessHoursBetween()` は日単位の重なりで数える。祝日は `Settings.holidays`
 - 送信者分類が違う: `contracts/teams.md` の表。社員マスタの `teams_user_id` が未設定だと Y7 になる

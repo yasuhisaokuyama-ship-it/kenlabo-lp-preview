@@ -24,6 +24,8 @@ export interface Staff {
   department: Department;
   email: string;
   teams_user_id?: string;
+  /** LINE グループに社員が入っている場合の userId（社員の発言を返信とみなすため） */
+  line_user_id?: string;
   is_department_head?: boolean;
   weekly_capacity_points: number;
   active: boolean;
@@ -49,6 +51,8 @@ export interface Contact {
   email?: string;
   phone?: string;
   is_customer: boolean;
+  /** LINE でブロック（unfollow）された日時 */
+  unfollowed_at?: string;
 }
 
 export interface Site {
@@ -194,6 +198,9 @@ export interface AftercareTicket {
   follow_up_date: string;
   status: 'received' | 'scheduled' | 'in_progress' | 'completed' | 'closed';
   origin_thread_id?: string;
+  description?: string;
+  /** 初回対応（scheduled 以降）に進んだ日時。受付→初回対応の日数 KPI に使う */
+  first_response_at?: string;
   resolution_note?: string;
 }
 
@@ -211,6 +218,17 @@ export interface IntegrationState {
   last_error?: string;
   failure_count: number;
   subscriptions: { resource: string; expires_at: string }[];
+  /** LINE push の月間通数（キーは JST の YYYY-MM） */
+  monthly_usage?: Record<string, number>;
+  /** プランの月間上限（API から取れたらその値） */
+  quota?: number;
+}
+
+/** Webhook イベントの重複排除用（LINE の webhookEventId など） */
+export interface ProcessedEvent {
+  id: string;
+  provider: 'line' | 'teams';
+  received_at: string;
 }
 
 export interface AuditLog {
@@ -224,7 +242,7 @@ export interface AuditLog {
   at: string;
 }
 
-export type NotificationLevel = 'owner' | 'head' | 'exec' | 'digest';
+export type NotificationLevel = 'owner' | 'head' | 'exec' | 'digest' | 'system';
 
 export interface Notification {
   id: string;
@@ -262,8 +280,18 @@ export interface Settings {
     aftercare_first_response_days: number;
   };
   stage_sla_days: Record<string, number>;
+  /** 開業日から逆算するマイルストーン（営業日前）。仮値。鈴木さん・山田さんに確認して直す */
+  milestone_plan: { name: string; business_days_before_opening: number }[];
+  line: {
+    /** 月間メッセージ通数の上限（プラン）。API から取れない場合に使う */
+    monthly_quota: number;
+    /** 友だち追加時のあいさつ。【利用目的】【共有先】【保持期間】【問い合わせ先】を必ず含める */
+    greeting: string;
+  };
   notify: { teams_webhook_url?: string; google_chat_webhook_url?: string };
 }
+
+export const GREETING_REQUIRED_LABELS = ['【利用目的】', '【共有先】', '【保持期間】', '【問い合わせ先】'];
 
 export const DEFAULT_SETTINGS: Settings = {
   tenant_id: '00000000-0000-0000-0000-000000000000',
@@ -308,6 +336,22 @@ export const DEFAULT_SETTINGS: Settings = {
     construction: 45,
     inspection: 7,
     handover: 5,
+  },
+  milestone_plan: [
+    { name: '実施設計完了', business_days_before_opening: 35 },
+    { name: '発注完了', business_days_before_opening: 30 },
+    { name: '着工', business_days_before_opening: 25 },
+    { name: '引渡', business_days_before_opening: 3 },
+  ],
+  line: {
+    monthly_quota: 200,
+    greeting: [
+      '友だち追加ありがとうございます。建.LABO です。',
+      '【利用目的】店舗づくりのご相談・お見積り・工事・アフター対応のご連絡に使います。',
+      '【共有先】担当の社員と、工事を担当する協力業者に必要な範囲で共有します。',
+      '【保持期間】最後のご連絡から5年間保管し、その後削除します。',
+      '【問い合わせ先】（管理画面の設定で電話番号・メールを入れてください）',
+    ].join('\n'),
   },
   notify: {},
 };

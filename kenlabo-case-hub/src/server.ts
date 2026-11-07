@@ -1,6 +1,8 @@
 import { serve } from '@hono/node-server';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { LocalBlobStore } from './adapters/blob';
+import { LiveLinePort, MockLinePort, type LinePort } from './adapters/line';
 import { MockNotifier, WebhookNotifier, type NotifierPort } from './adapters/notify';
 import { MockTeamsPort } from './adapters/teams';
 import { jstParts, systemClock } from './domain/time';
@@ -27,6 +29,10 @@ async function main(): Promise<void> {
   if (process.env.TEAMS_TENANT_ID) store.settings.tenant_id = process.env.TEAMS_TENANT_ID;
 
   const teams = new MockTeamsPort(resolve(process.cwd(), 'fixtures/teams/chats.json'));
+  // LINE: アクセストークンがあれば本番 API、なければモック。署名検証の秘密鍵は開発では固定値
+  const line: LinePort = process.env.LINE_CHANNEL_ACCESS_TOKEN ? new LiveLinePort(process.env.LINE_CHANNEL_ACCESS_TOKEN) : new MockLinePort();
+  const lineChannelSecret = process.env.LINE_CHANNEL_SECRET || (production ? undefined : 'dev-line-secret');
+  const blobs = new LocalBlobStore(process.env.MEDIA_DIR ?? './data/media');
 
   let notifier: NotifierPort = new MockNotifier();
   if (process.env.TEAMS_WORKFLOWS_WEBHOOK_URL) notifier = new WebhookNotifier(process.env.TEAMS_WORKFLOWS_WEBHOOK_URL, 'teams_webhook');
@@ -34,19 +40,22 @@ async function main(): Promise<void> {
 
   const loaded = !production && process.env.RESET_DATA !== '1' && store.loadIfExists();
   if (!loaded && store.count('cases') === 0) {
-    await seedDemo(store, teams, systemClock.now());
+    await seedDemo(store, { teams, line: line instanceof MockLinePort ? line : new MockLinePort(), blobs }, systemClock.now());
     console.log('seeded demo data');
   }
 
   const { app, ragDeps, reconcileAll, state } = createApp({
     store,
     teams,
+    line,
+    blobs,
     notifier,
     clock: systemClock,
     env: {
       production,
       devUserEmail: process.env.DEV_USER_EMAIL,
       teamsClientState: process.env.TEAMS_CLIENT_STATE ?? 'dev-client-state',
+      lineChannelSecret,
       baseUrl: process.env.BASE_URL,
     },
   });
@@ -68,7 +77,7 @@ async function main(): Promise<void> {
   }, 10 * 60_000);
 
   serve({ fetch: app.fetch, port }, (info) => {
-    console.log(`kenlabo-case-hub listening on http://localhost:${info.port} (${production ? 'production' : 'development'}, notifier=${notifier.channel}, teams=${teams.mode})`);
+    console.log(`kenlabo-case-hub listening on http://localhost:${info.port} (${production ? 'production' : 'development'}, notifier=${notifier.channel}, teams=${teams.mode}, line=${line.mode})`);
   });
 }
 

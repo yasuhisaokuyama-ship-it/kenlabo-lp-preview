@@ -1,8 +1,8 @@
 import type { NotifierPort, NotificationPayload } from '../adapters/notify';
 import { evaluateCase, type RagInput, type RagResult } from '../domain/rag';
-import { stageLabel } from '../domain/stages';
-import { jstDateStr, jstParts, type Clock } from '../domain/time';
-import type { Case, Notification, NotificationLevel, Staff } from '../domain/types';
+import { currentStageKey, stageLabel } from '../domain/stages';
+import { businessHoursBetween, jstDateStr, jstParts, type Clock } from '../domain/time';
+import type { Case, Notification, NotificationLevel, Settings, Staff } from '../domain/types';
 import { MemoryStore, newId } from '../store/repo';
 
 export interface RagDeps {
@@ -12,10 +12,51 @@ export interface RagDeps {
   baseUrl?: string;
   /** 再試行の待ち時間（ms）。テストでは [0,0,0]。 */
   retryDelaysMs?: number[];
+  /** 段階ごとの滞留時間中央値のキャッシュ（10分） */
+  medians?: { at: number; values: Record<string, number> };
 }
 
-export function gatherInput(store: MemoryStore, c: Case): RagInput {
+export const MEDIAN_MIN_SAMPLES = 5;
+
+function median(xs: number[]): number {
+  const a = [...xs].sort((x, y) => x - y);
+  const mid = Math.floor(a.length / 2);
+  return a.length % 2 ? a[mid]! : (a[mid - 1]! + a[mid]!) / 2;
+}
+
+/** StageHistory から段階ごとの滞留時間（営業時間）の中央値を出す。サンプル5件未満の段階は含めない。 */
+export function stageStayMedians(store: MemoryStore, s: Settings): Record<string, number> {
+  const byCase = new Map<string, { to_stage: string; changed_at: string }[]>();
+  for (const h of store.list('stage_history')) {
+    const list = byCase.get(h.case_id) ?? [];
+    list.push(h);
+    byCase.set(h.case_id, list);
+  }
+  const samples = new Map<string, number[]>();
+  for (const list of byCase.values()) {
+    list.sort((a, b) => a.changed_at.localeCompare(b.changed_at));
+    for (let i = 0; i + 1 < list.length; i++) {
+      const stage = list[i]!.to_stage;
+      const hours = businessHoursBetween(new Date(list[i]!.changed_at), new Date(list[i + 1]!.changed_at), s);
+      samples.set(stage, [...(samples.get(stage) ?? []), hours]);
+    }
+  }
+  const out: Record<string, number> = {};
+  for (const [stage, xs] of samples) if (xs.length >= MEDIAN_MIN_SAMPLES) out[stage] = median(xs);
+  return out;
+}
+
+function getMedians(deps: RagDeps): Record<string, number> {
+  const t = deps.clock.now().getTime();
+  if (!deps.medians || t < deps.medians.at || t - deps.medians.at > 10 * 60 * 1000) {
+    deps.medians = { at: t, values: stageStayMedians(deps.store, deps.store.settings) };
+  }
+  return deps.medians.values;
+}
+
+export function gatherInput(store: MemoryStore, c: Case, medians: Record<string, number> = {}): RagInput {
   return {
+    stageStayMedianHours: medians[currentStageKey(c)],
     case: c,
     site: store.get('sites', c.site_id),
     owner: c.owner_staff_id ? store.get('staff', c.owner_staff_id) : undefined,
@@ -149,7 +190,7 @@ export async function recomputeCase(deps: RagDeps, caseId: string): Promise<Case
   const c = store.get('cases', caseId);
   if (!c || c.archived_at) return c;
   const now = deps.clock.now();
-  const result = evaluateCase(gatherInput(store, c), store.settings, now);
+  const result = evaluateCase(gatherInput(store, c, getMedians(deps)), store.settings, now);
   const updated: Case = {
     ...c,
     rag_color: result.color,
