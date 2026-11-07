@@ -1,0 +1,78 @@
+{
+  "chats": [
+    {
+      "chatId": "19:ug-shibuya-a@thread.v2",
+      "guestUserIds": ["guest-ug-tanaka"],
+      "messages": [
+        {
+          "id": "1000",
+          "createdDateTime": "2026-11-05T01:05:00Z",
+          "messageType": "message",
+          "from": { "user": { "id": "staff-matsumoto", "displayName": "松本", "userIdentityType": "aadUser", "tenantId": "00000000-0000-0000-0000-000000000000" } },
+          "body": { "contentType": "html", "content": "<p>渋谷A店の実施設計図、本日中に共有します。</p>" }
+        },
+        {
+          "id": "1001",
+          "createdDateTime": "2026-11-05T02:10:00Z",
+          "messageType": "message",
+          "from": { "user": { "id": "guest-ug-tanaka", "displayName": "田中（UG）", "userIdentityType": "aadUser", "tenantId": "00000000-0000-0000-0000-000000000000" } },
+          "body": { "contentType": "text", "content": "ありがとうございます。什器の納期も教えてください。" }
+        },
+        {
+          "id": "1002",
+          "createdDateTime": "2026-11-05T02:12:00Z",
+          "messageType": "message",
+          "from": { "application": { "id": "bot-workflows", "displayName": "Workflows", "applicationIdentityType": "bot" } },
+          "body": { "contentType": "text", "content": "（自動投稿）案件アラート: 確認してください" }
+        }
+      ]
+    },
+    {
+      "chatId": "19:ug-shinjuku-b@thread.v2",
+      "guestUserIds": [],
+      "messages": [
+        {
+          "id": "2000",
+          "createdDateTime": "2026-11-04T03:00:00Z",
+          "messageType": "message",
+          "from": { "user": { "id": "ext-ug-sato", "displayName": "佐藤（UG本部）", "userIdentityType": "federatedUser", "tenantId": "11111111-1111-1111-1111-111111111111" } },
+          "body": { "contentType": "text", "content": "新宿B店の開業日が12/5に決まりました。工程表をください。" }
+        },
+        {
+          "id": "2001",
+          "createdDateTime": "2026-11-04T06:30:00Z",
+          "messageType": "message",
+          "from": { "user": { "id": "ext-ug-sato", "displayName": "佐藤（UG本部）", "userIdentityType": "federatedUser", "tenantId": "11111111-1111-1111-1111-111111111111" } },
+          "body": { "contentType": "text", "content": "すみません、本日中に返事をいただけますか。" }
+        },
+        {
+          "id": "2002",
+          "createdDateTime": "2026-11-04T06:31:00Z",
+          "messageType": "systemEventMessage",
+          "from": null,
+          "body": { "contentType": "html", "content": "<systemEventMessage/>" }
+        }
+      ]
+    },
+    {
+      "chatId": "19:ug-ikebukuro-c@thread.v2",
+      "guestUserIds": [],
+      "messages": [
+        {
+          "id": "3000",
+          "createdDateTime": "2026-11-06T05:00:00Z",
+          "messageType": "message",
+          "from": { "user": { "id": "unknown-aad-user", "displayName": "鈴木 一郎", "userIdentityType": "aadUser", "tenantId": "00000000-0000-0000-0000-000000000000" } },
+          "body": { "contentType": "text", "content": "池袋C店の現調日程、来週で調整お願いします。" }
+        },
+        {
+          "id": "3001",
+          "createdDateTime": "2026-11-06T05:20:00Z",
+          "messageType": "message",
+          "from": { "user": { "id": "staff-yamada", "displayName": "山田", "userIdentityType": "aadUser", "tenantId": "00000000-0000-0000-0000-000000000000" } },
+          "body": { "contentType": "text", "content": "承知しました。来週火曜 14:00 でいかがでしょうか。" }
+        }
+      ]
+    }
+  ]
+}
