@@ -1,0 +1,9 @@
+# 会話の生ログ（このリポジトリは public のためコミットしない。整形版 vault/daily/YYYY-MM-DD.md のみコミット）
+vault/daily/_raw/
+# フックの処理位置メモ
+.claude/hooks/.state/
+.claude/settings.local.json
+# Obsidian の端末ごとの設定
+vault/.obsidian/workspace*.json
+vault/.trash/
+__pycache__/
